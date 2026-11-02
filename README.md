@@ -71,13 +71,16 @@ confluent environment use "$ENV"
 confluent kafka cluster use "$CLUSTER"
 ```
 
-The Datagen connector writes Avro orders to the `orders` topic. To consume with the CLI, store the `orders_consumer` API key that Terraform created. The secret stays in local Terraform state.
+The Datagen connector writes Avro orders to the `orders` topic. To consume with the CLI, store the `orders_consumer` API key that Terraform created. `terraform state show` prints the secret as `(sensitive value)`. The value is still in local state; read it from the state JSON. Do not commit or paste that secret.
 
 ```bash
 terraform state show confluent_api_key.orders_consumer
 
-confluent api-key store "<key id>" "<secret>" --resource "$CLUSTER"
-confluent api-key use "<key id>" --resource "$CLUSTER"
+KEY="$(terraform state pull | jq -r '.resources[] | select(.type=="confluent_api_key" and .name=="orders_consumer") | .instances[0].attributes.id')"
+SECRET="$(terraform state pull | jq -r '.resources[] | select(.type=="confluent_api_key" and .name=="orders_consumer") | .instances[0].attributes.secret')"
+
+confluent api-key store "$KEY" "$SECRET" --resource "$CLUSTER"
+confluent api-key use "$KEY" --resource "$CLUSTER"
 confluent kafka topic consume orders --from-beginning
 ```
 
